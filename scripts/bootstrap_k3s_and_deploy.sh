@@ -17,10 +17,8 @@ if ! command -v k3s >/dev/null 2>&1; then
   curl -sfL https://get.k3s.io | sh -
 fi
 
-export KUBECONFIG="${KUBECONFIG:-/etc/rancher/k3s/k3s.yaml}"
-
 docker build -t "${IMAGE_NAME}" .
-TMP_IMAGE_TAR="$(mktemp /tmp/raspberry-pi-arc-image-XXXXXX.tar)"
+TMP_IMAGE_TAR="$(mktemp)"
 docker save "${IMAGE_NAME}" -o "${TMP_IMAGE_TAR}"
 sudo k3s ctr images import "${TMP_IMAGE_TAR}"
 rm -f "${TMP_IMAGE_TAR}"

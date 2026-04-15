@@ -3,6 +3,9 @@ name: arc-gitops-deploy
 on:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   deploy-via-arc:
     runs-on: ubuntu-latest
