@@ -34,7 +34,7 @@ if [ ! -d "${K8S_DIR}" ]; then
   echo "Kubernetes manifest directory not found: ${K8S_DIR}" >&2
   exit 1
 fi
-sudo kubectl kustomize "${K8S_DIR}" >/dev/null
+sudo kubectl kustomize "${K8S_DIR}"
 
 sudo kubectl apply -k "${K8S_DIR}"
 sudo kubectl -n raspberry-pi-arc-demo rollout status deployment/log-writer
