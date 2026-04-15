@@ -1,0 +1,34 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: log-writer
+  namespace: raspberry-pi-arc-demo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: log-writer
+  template:
+    metadata:
+      labels:
+        app: log-writer
+    spec:
+      containers:
+        - name: log-writer
+          image: raspberry-pi-arc-demo:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: LOG_DIR
+              value: /app/logs
+            - name: LOG_FILE
+              value: demo.log
+            - name: LOG_INTERVAL_SECONDS
+              value: "2"
+          volumeMounts:
+            - name: host-logs
+              mountPath: /app/logs
+      volumes:
+        - name: host-logs
+          hostPath:
+            path: /var/lib/raspberry-pi-arc/logs
+            type: DirectoryOrCreate
