@@ -19,7 +19,7 @@ if ! command -v k3s >/dev/null 2>&1; then
 fi
 
 docker build -t "${IMAGE_NAME}" .
-TMP_IMAGE_TAR="$(mktemp --suffix=.tar)"
+TMP_IMAGE_TAR="$(mktemp).tar"
 cleanup() {
   if [ -n "${TMP_IMAGE_TAR}" ] && [ -f "${TMP_IMAGE_TAR}" ]; then
     rm -f "${TMP_IMAGE_TAR}"
@@ -34,7 +34,8 @@ if [ ! -d "${K8S_DIR}" ]; then
   echo "Kubernetes manifest directory not found: ${K8S_DIR}" >&2
   exit 1
 fi
-sudo kubectl kustomize "${K8S_DIR}"
+# Validate manifests render successfully before applying.
+sudo kubectl kustomize "${K8S_DIR}" >/dev/null
 
 sudo kubectl apply -k "${K8S_DIR}"
 sudo kubectl -n raspberry-pi-arc-demo rollout status deployment/log-writer
