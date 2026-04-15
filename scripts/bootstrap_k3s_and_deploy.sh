@@ -18,7 +18,7 @@ if ! command -v k3s >/dev/null 2>&1; then
 fi
 
 docker build -t "${IMAGE_NAME}" .
-TMP_IMAGE_TAR="$(mktemp)"
+TMP_IMAGE_TAR="$(mktemp --suffix=.tar)"
 docker save "${IMAGE_NAME}" -o "${TMP_IMAGE_TAR}"
 sudo k3s ctr images import "${TMP_IMAGE_TAR}"
 rm -f "${TMP_IMAGE_TAR}"
