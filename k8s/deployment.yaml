@@ -26,6 +26,7 @@ spec:
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
+            runAsUser: 1000
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false
             capabilities:
