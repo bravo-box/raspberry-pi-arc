@@ -1,2 +1,15 @@
-**/__pycache__/
-**/*.pyc
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+*.egg-info/
+
+# Docker
+.dockerignore
+
+# Editors
+.vscode/
+.idea/
+*.swp

@@ -1,0 +1,26 @@
+version: "3.9"
+
+services:
+  rpi-camera-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: rpi-camera-app:latest
+    container_name: rpi-camera-app
+    restart: unless-stopped
+    ports:
+      - "5000:5000"
+    # Expose the camera device to the container
+    devices:
+      - /dev/video0:/dev/video0
+    # Grant the container access to the video group so libcamera can open the device
+    group_add:
+      - video
+    environment:
+      - FLASK_ENV=production
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
