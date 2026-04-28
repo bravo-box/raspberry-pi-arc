@@ -1,0 +1,135 @@
+@page "/"
+@namespace WebApp.Pages
+
+<PageTitle>RPI-ARC Tactical Monitor</PageTitle>
+
+<div class="tactical-screen">
+    <!-- LEFT PANEL: Fleet list -->
+    <div class="fleet-panel">
+        <div class="panel-header">
+            <span class="header-icon">&#x25C8;</span>
+            FLEET STATUS
+            <span class="device-count">[@_devices.Count UNITS]</span>
+        </div>
+        <div class="panel-body fleet-list">
+            @if (_loadingFleet)
+            {
+                <div class="status-msg">SCANNING NETWORK...</div>
+            }
+            else if (!_devices.Any())
+            {
+                <div class="status-msg">NO DEVICES DETECTED</div>
+            }
+            else
+            {
+                @foreach (var device in _devices)
+                {
+                    <div class="device-card @(IsSelected(device) ? "selected" : "")"
+                         @onclick="() => SelectDevice(device)">
+                        <div class="device-card-header">
+                            <span class="device-hostname">@device.Hostname</span>
+                            <span class="status-badge @(device.IsHealthy ? "online" : "offline")">
+                                @(device.IsHealthy ? "ONLINE" : "OFFLINE")
+                            </span>
+                        </div>
+                        <div class="device-assetid">ID: @TruncateId(device.AssetId)</div>
+                        <div class="device-telemetry-time">
+                            @if (device.LastTelemetryAt.HasValue)
+                            {
+                                <span>LAST: @device.LastTelemetryAt.Value.ToString("HH:mm:ss UTC")</span>
+                            }
+                            else
+                            {
+                                <span class="no-data">NO TELEMETRY</span>
+                            }
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+        <div class="panel-footer">
+            REFRESH IN @_refreshCountdown s
+        </div>
+    </div>
+
+    <!-- RIGHT PANEL: Device detail -->
+    <div class="detail-panel">
+        @if (_selectedDevice is null)
+        {
+            <div class="no-selection">
+                <div class="crosshair">&#x2295;</div>
+                <div>SELECT A DEVICE</div>
+                <div class="sub-label">AWAITING TARGET ACQUISITION</div>
+            </div>
+        }
+        else
+        {
+            <div class="detail-header">
+                <div class="detail-title">
+                    <span class="detail-hostname">@_selectedDevice.Hostname</span>
+                    <span class="detail-assetid">@_selectedDevice.AssetId</span>
+                </div>
+                <div class="detail-actions">
+                    <button class="btn-tactical"
+                            disabled="@_sendingCommand"
+                            @onclick="TakePicture">
+                        @if (_sendingCommand)
+                        {
+                            <span>TRANSMITTING...</span>
+                        }
+                        else
+                        {
+                            <span>&#128247; TAKE PICTURE</span>
+                        }
+                    </button>
+                    @if (_commandFeedback is not null)
+                    {
+                        <span class="cmd-feedback @_commandFeedbackClass">@_commandFeedback</span>
+                    }
+                </div>
+            </div>
+
+            <div class="section-block">
+                <div class="section-header">&#x25C8; TEMPERATURE TELEMETRY</div>
+                @if (_loadingTelemetry)
+                {
+                    <div class="status-msg">ACQUIRING DATA...</div>
+                }
+                else if (!_telemetry.Any())
+                {
+                    <div class="status-msg">NO TELEMETRY AVAILABLE</div>
+                }
+                else
+                {
+                    <div class="chart-container">
+                        @BuildTemperatureChart()
+                    </div>
+                }
+            </div>
+
+            <div class="section-block">
+                <div class="section-header">&#x25C8; CAPTURED IMAGES</div>
+                @if (_loadingImages)
+                {
+                    <div class="status-msg">LOADING IMAGERY...</div>
+                }
+                else if (!_images.Any())
+                {
+                    <div class="status-msg">NO IMAGES ON FILE</div>
+                }
+                else
+                {
+                    <div class="image-grid">
+                        @foreach (var img in _images)
+                        {
+                            <div class="image-card">
+                                <img src="@img.BlobUrl" alt="Captured image" loading="lazy" />
+                                <div class="image-timestamp">@img.CapturedAt.ToString("yyyy-MM-dd HH:mm:ss")</div>
+                            </div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+    </div>
+</div>

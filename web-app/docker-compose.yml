@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  webapp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - CosmosDb__Endpoint=${COSMOS_DB_ENDPOINT}
+      - CosmosDb__DatabaseName=rpi-arc
+      - CosmosDb__FleetContainer=fleet
+      - CosmosDb__TelemetryContainer=telemetry
+      - CosmosDb__ImagesContainer=images
+      - ServiceBus__FullyQualifiedNamespace=${SERVICE_BUS_NAMESPACE}
+      - ServiceBus__CommandsTopic=device-commands
+      - Storage__AccountUrl=${STORAGE_ACCOUNT_URL}
+      - ASPNETCORE_ENVIRONMENT=Production
+    restart: unless-stopped
