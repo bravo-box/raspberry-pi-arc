@@ -37,7 +37,7 @@ COPY --from=deps /usr/local/lib/python3.11/site-packages /usr/local/lib/python3.
 COPY --from=deps /usr/local/bin /usr/local/bin
 
 # Copy application source
-COPY app.py .
+COPY app.py azure_client.py ./
 
 # The camera device (/dev/video0) is passed in at runtime via --device
 EXPOSE 5000

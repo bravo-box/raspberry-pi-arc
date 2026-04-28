@@ -1,2 +1,5 @@
 flask==3.0.3
 picamera2==0.3.19
+azure-servicebus==7.12.1
+azure-storage-blob==12.21.2
+azure-identity==1.17.1

@@ -1,13 +1,28 @@
 import io
 import logging
+import os
+import random
 import time
+import threading
+import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 
 from flask import Flask, Response, jsonify, render_template_string
+
+try:
+    import azure_client as _azure
+    _AZURE_AVAILABLE = True
+except ImportError:
+    _AZURE_AVAILABLE = False
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Asset ID assigned by the backend after device registration
+_asset_id: str | None = None
+_asset_id_lock = threading.Lock()
 
 # Try to import picamera2; fall back gracefully when not running on a Pi
 try:
@@ -76,6 +91,77 @@ def _capture_jpeg() -> bytes:
     return stream.read()
 
 
+def _read_temperature() -> float:
+    """Return CPU temperature in Celsius, or a simulated value as fallback."""
+    try:
+        raw = Path("/sys/class/thermal/thermal_zone0/temp").read_text().strip()
+        return int(raw) / 1000.0
+    except Exception:  # pylint: disable=broad-except
+        return round(20.0 + random.uniform(-1.5, 1.5), 2)
+
+
+def _telemetry_loop() -> None:
+    """Background thread: send a temperature reading every 60 seconds."""
+    while True:
+        time.sleep(60)
+        with _asset_id_lock:
+            aid = _asset_id
+        if aid and _AZURE_AVAILABLE:
+            temp = _read_temperature()
+            _azure.send_telemetry(aid, temp)
+
+
+def _register_and_start(on_take_picture_fn) -> None:
+    """Background thread: register device then start telemetry + commands."""
+    global _asset_id  # noqa: PLW0603
+    aid = _azure.get_or_register_device()
+    if aid:
+        with _asset_id_lock:
+            _asset_id = aid
+        _azure.start_command_listener(aid, on_take_picture_fn)
+        logger.info("Azure integration active (assetId=%s)", aid)
+    else:
+        logger.warning("Could not obtain an asset ID; Azure integration limited")
+
+
+def _init_azure() -> None:
+    """Kick off Azure registration, telemetry, and command listening."""
+    if not _AZURE_AVAILABLE:
+        logger.warning("azure_client not importable; Azure integration disabled")
+        return
+
+    def _on_take_picture():
+        if CAMERA_AVAILABLE:
+            try:
+                data_dir = Path("/app/data")
+                data_dir.mkdir(parents=True, exist_ok=True)
+                img_path = data_dir / f"cmd_{uuid.uuid4().hex[:8]}.jpg"
+                img_path.write_bytes(_capture_jpeg())
+                with _asset_id_lock:
+                    aid = _asset_id
+                if aid:
+                    threading.Thread(
+                        target=_azure.upload_image,
+                        args=(aid, img_path),
+                        daemon=True,
+                    ).start()
+            except Exception as exc:  # pylint: disable=broad-except
+                logger.error("Command-triggered capture failed: %s", exc)
+
+    threading.Thread(
+        target=_register_and_start,
+        args=(_on_take_picture,),
+        daemon=True,
+        name="azure-registration",
+    ).start()
+
+    threading.Thread(
+        target=_telemetry_loop,
+        daemon=True,
+        name="telemetry-loop",
+    ).start()
+
+
 def _generate_mjpeg():
     """Yield MJPEG frames for a continuous stream."""
     while True:
@@ -94,10 +180,27 @@ def index():
 
 @app.route("/capture")
 def capture():
-    """Return a single JPEG snapshot."""
+    """Return a single JPEG snapshot and optionally upload it to Azure."""
     if not CAMERA_AVAILABLE:
         return jsonify({"error": "Camera not available"}), 503
     frame = _capture_jpeg()
+
+    with _asset_id_lock:
+        aid = _asset_id
+    if aid and _AZURE_AVAILABLE:
+        try:
+            data_dir = Path("/app/data")
+            data_dir.mkdir(parents=True, exist_ok=True)
+            img_path = data_dir / f"snap_{uuid.uuid4().hex[:8]}.jpg"
+            img_path.write_bytes(frame)
+            threading.Thread(
+                target=_azure.upload_image,
+                args=(aid, img_path),
+                daemon=True,
+            ).start()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.error("Failed to queue image upload: %s", exc)
+
     return Response(frame, mimetype="image/jpeg")
 
 
@@ -115,13 +218,21 @@ def stream():
 @app.route("/health")
 def health():
     """Liveness / readiness probe endpoint."""
+    with _asset_id_lock:
+        aid = _asset_id
     return jsonify(
         {
             "status": "ok",
             "camera_available": CAMERA_AVAILABLE,
+            "asset_id": aid,
             "timestamp": datetime.now(timezone.utc).isoformat(),
         }
     )
+
+
+# Initialize Azure integration if Service Bus is configured
+if os.getenv("SERVICEBUS_NAMESPACE"):
+    _init_azure()
 
 
 if __name__ == "__main__":

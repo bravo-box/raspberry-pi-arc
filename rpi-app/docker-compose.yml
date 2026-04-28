@@ -18,9 +18,23 @@ services:
       - video
     environment:
       - FLASK_ENV=production
+      - SERVICEBUS_NAMESPACE=${SERVICEBUS_NAMESPACE:-}
+      - REGISTRATION_TOPIC=device-registration
+      - TELEMETRY_TOPIC=device-telemetry
+      - COMMANDS_TOPIC=device-commands
+      - COMMANDS_SUBSCRIPTION=backend-sub
+      - IMAGES_TOPIC=device-images
+      - STORAGE_ACCOUNT_URL=${STORAGE_ACCOUNT_URL:-}
+      - IMAGES_CONTAINER=device-images
+      - ASSET_ID_FILE=/app/data/asset_id.txt
+    volumes:
+      - rpi_data:/app/data
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 30s
       timeout: 10s
       retries: 3
       start_period: 15s
+
+volumes:
+  rpi_data:
