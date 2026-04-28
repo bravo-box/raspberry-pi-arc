@@ -14,6 +14,7 @@ Demo project for deploying a Python log generator to a Raspberry Pi (Raspbian) o
 - Script to install/bootstrap k3s and deploy the containerized app
 - Script to onboard k3s to Azure Arc and install Azure Monitor containers extension
 - Script to configure Arc GitOps (Flux) automated deployments from this repository
+- Script to setup registry replication between k3s local registry and Azure Container Registry (ACR)
 - GitHub Actions workflow to automate Arc onboarding + GitOps deployment
 
 ## Prerequisites (Raspbian)
@@ -84,6 +85,72 @@ export MANIFEST_PATH="./k8s"
 ```
 
 This configures Arc Flux GitOps so future manifest updates are deployed automatically to the Raspberry Pi cluster.
+
+## Container Registry replication (k3s to Azure Container Registry)
+
+Registry replication enables automatic synchronization of container images between the local k3s registry and Azure Container Registry (ACR). This is useful for:
+
+- **Air-gapped environments**: Push images to the local k3s registry; replication handles pushing to ACR
+- **Bandwidth optimization**: Build images locally, replicate only what's needed
+- **Centralized image management**: Maintain a central ACR repository for governance and scanning
+- **Multi-cluster deployments**: Share images across multiple Arc-enabled clusters via ACR
+
+### Setup registry replication
+
+First, ensure your cluster is Arc-enabled by running `setup_arc_k8s.sh` (see above).
+
+Then, set environment variables and run:
+
+```bash
+export RESOURCE_GROUP="<rg>"
+export CLUSTER_NAME="<arc-cluster-name>"
+export LOCATION="<azure-region>"  # e.g., usgovvirginia, usgoviowa
+export ACR_NAME="<acr-name>"      # e.g., myacr (DNS-safe, lowercase only)
+export SUBSCRIPTION_ID="<subscription-id>"
+export CLOUD=AzureUSGovernment
+
+./scripts/setup-registry-replication.sh
+```
+
+The script will:
+
+1. Create Azure Container Registry (ACR) if it doesn't exist
+2. Create a service principal with push/pull permissions
+3. Configure k3s registry mirroring to ACR
+4. Create Kubernetes secrets for authentication
+5. Validate connectivity to ACR
+
+### Using registry replication
+
+**Push an image to the local k3s registry:**
+
+```bash
+docker build -t localhost:5000/my-app:latest .
+docker push localhost:5000/my-app:latest
+```
+
+**Verify image appears in ACR:**
+
+```bash
+# List repositories in ACR
+az acr repository list --name <ACR_NAME>
+
+# List tags for a repository
+az acr repository show-tags --name <ACR_NAME> --repository my-app
+```
+
+**View k3s replication logs:**
+
+```bash
+kubectl logs -f -n arc-registry-replication -l app=registry
+```
+
+**Pull images from ACR in your cluster:**
+
+```bash
+# Update deployment to pull from ACR
+kubectl set image deployment/my-app my-app=<ACR_LOGIN_SERVER>/my-app:latest
+```
 
 ## GitHub Actions automation
 
