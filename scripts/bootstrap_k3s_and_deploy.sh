@@ -56,6 +56,11 @@ if ! command -v k3s >/dev/null 2>&1; then
   curl -sfL https://get.k3s.io | sh -
 fi
 
+if ! command -v az >/dev/null 2>&1; then
+  echo "Installing Azure CLI..." >&2
+  curl -sL https://aka.ms/InstallAzureCLIDeb | sudo bash
+fi
+
 docker build -t "${IMAGE_NAME}" .
 TMP_IMAGE_TAR="$(mktemp).tar"
 cleanup() {
