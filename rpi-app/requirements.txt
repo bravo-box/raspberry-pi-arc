@@ -1,2 +1,2 @@
 flask==3.0.3
-picamera2==0.3.19
+picamera2==0.3.34

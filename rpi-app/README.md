@@ -60,6 +60,36 @@ docker compose logs -f rpi-camera-app
 docker compose down
 ```
 
+## Accessing the web UI from Kubernetes
+
+When deployed to a Kubernetes cluster, the application is exposed via a NodePort service on port `30500`.
+
+### Get the cluster node IP
+
+```bash
+# Get the node IP of your cluster
+kubectl get nodes -o wide
+
+# Get the InternalIP address directly (most common for local clusters)
+kubectl get nodes -o jsonpath='{.items[0].status.addresses[?(@.type=="InternalIP")].address}'
+```
+
+### Access the web UI
+
+Once you have the node IP, access the application at:
+
+```
+http://<node-ip>:30500
+```
+
+For example, if your node IP is `192.168.1.100`:
+
+```
+http://192.168.1.100:30500
+```
+
+You can now view the live camera stream, capture snapshots, and check the health status from outside the cluster.
+
 ## Running without Docker (development)
 
 ```bash

@@ -9,6 +9,9 @@ app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Initialize camera variable
+camera = None
+
 # Try to import picamera2; fall back gracefully when not running on a Pi
 try:
     from picamera2 import Picamera2
@@ -25,6 +28,7 @@ try:
     CAMERA_AVAILABLE = True
     logger.info("Picamera2 initialised successfully.")
 except Exception as exc:  # pylint: disable=broad-except
+    camera = None
     CAMERA_AVAILABLE = False
     logger.warning("Camera not available: %s", exc)
 
@@ -70,6 +74,8 @@ INDEX_HTML = """
 
 def _capture_jpeg() -> bytes:
     """Capture a JPEG image from the camera and return raw bytes."""
+    if not camera:
+        raise RuntimeError("Camera is not available")
     stream = io.BytesIO()
     camera.capture_file(stream, format="jpeg")
     stream.seek(0)
@@ -78,6 +84,8 @@ def _capture_jpeg() -> bytes:
 
 def _generate_mjpeg():
     """Yield MJPEG frames for a continuous stream."""
+    if not camera:
+        raise RuntimeError("Camera is not available")
     while True:
         frame = _capture_jpeg()
         yield (
