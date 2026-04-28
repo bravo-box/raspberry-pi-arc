@@ -13,11 +13,24 @@ services:
     # Expose the camera device to the container
     devices:
       - /dev/video0:/dev/video0
+      # 1-Wire bus device for DS18B20 temperature sensor (GPIO4 by default)
+      - /dev/gpiomem:/dev/gpiomem
+    volumes:
+      # Mount the 1-Wire sysfs subtree so the DS18B20 sensor is visible inside the container
+      - /sys/bus/w1:/sys/bus/w1:ro
     # Grant the container access to the video group so libcamera can open the device
     group_add:
       - video
     environment:
       - FLASK_ENV=production
+      # MQTT broker settings — point to your broker (e.g. Azure IoT Hub MQTT endpoint,
+      # Mosquitto, or any other MQTT v3.1.1 / v5 broker reachable from the Pi).
+      - MQTT_BROKER=${MQTT_BROKER:-localhost}
+      - MQTT_PORT=${MQTT_PORT:-1883}
+      - MQTT_TOPIC=${MQTT_TOPIC:-rpi/temperature}
+      - MQTT_CLIENT_ID=${MQTT_CLIENT_ID:-rpi-camera-app}
+      # How often (seconds) to read the sensor and publish a reading
+      - TEMP_INTERVAL=${TEMP_INTERVAL:-30}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:5000/health')"]
       interval: 30s

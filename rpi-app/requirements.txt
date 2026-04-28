@@ -1,2 +1,4 @@
 flask==3.0.3
 picamera2==0.3.19
+paho-mqtt==2.1.0
+w1thermsensor==2.3.0

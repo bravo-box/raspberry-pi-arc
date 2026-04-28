@@ -21,7 +21,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 FROM python:3.11-slim-bookworm AS runtime
 
 LABEL maintainer="raspberry-pi-arc"
-LABEL description="Raspberry Pi camera application"
+LABEL description="Raspberry Pi camera and temperature-sensor application"
 
 WORKDIR /app
 
