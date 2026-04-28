@@ -158,6 +158,8 @@ public partial class Index : ComponentBase, IDisposable
         int chartH = svgHeight - padTop - padBottom;
 
         var temps = _telemetry.Select(t => t.Temperature).ToList();
+        if (temps.Count == 0) return new MarkupString(string.Empty);
+
         double minT = temps.Min() - 1;
         double maxT = temps.Max() + 1;
         double rangeT = maxT - minT;
@@ -196,9 +198,11 @@ public partial class Index : ComponentBase, IDisposable
         for (int i = 0; i < n; i++)
             sb.Append($"<circle cx=\"{ScaleX(i):F1}\" cy=\"{ScaleY(temps[i]):F1}\" r=\"3\" fill=\"#00ff88\"/>");
 
-        // X-axis time labels
-        var indices = new[] { 0, n / 2, n - 1 }.Distinct().ToArray();
-        foreach (var i in indices)
+        // X-axis time labels: first, mid, last — deduplicated for small datasets
+        var labelIndices = new List<int> { 0 };
+        if (n > 2) labelIndices.Add(n / 2);
+        if (n > 1) labelIndices.Add(n - 1);
+        foreach (var i in labelIndices)
         {
             double x = ScaleX(i);
             string label = _telemetry[i].Timestamp.ToString("HH:mm");
