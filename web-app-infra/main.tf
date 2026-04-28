@@ -99,6 +99,25 @@ resource "azurerm_servicebus_subscription" "device_images" {
   max_delivery_count = 10
 }
 
+# Registration response topic — Azure Function publishes here after assigning a GUID;
+# the rpi-app listens on the rpi-sub subscription, filtered by correlation ID.
+resource "azurerm_servicebus_topic" "device_registration_response" {
+  name         = "device-registration-response"
+  namespace_id = azurerm_servicebus_namespace.main.id
+}
+
+resource "azurerm_servicebus_subscription" "device_registration_response_rpi" {
+  name               = "rpi-sub"
+  topic_id           = azurerm_servicebus_topic.device_registration_response.id
+  max_delivery_count = 10
+}
+
+resource "azurerm_servicebus_subscription" "device_registration_response_backend" {
+  name               = "backend-sub"
+  topic_id           = azurerm_servicebus_topic.device_registration_response.id
+  max_delivery_count = 10
+}
+
 # ── Cosmos DB ─────────────────────────────────────────────────────────────────
 
 resource "azurerm_cosmosdb_account" "main" {
@@ -140,6 +159,14 @@ resource "azurerm_cosmosdb_sql_container" "fleet" {
 
 resource "azurerm_cosmosdb_sql_container" "telemetry" {
   name                = "telemetry"
+  resource_group_name = azurerm_resource_group.main.name
+  account_name        = azurerm_cosmosdb_account.main.name
+  database_name       = azurerm_cosmosdb_sql_database.main.name
+  partition_key_path  = "/assetId"
+}
+
+resource "azurerm_cosmosdb_sql_container" "images" {
+  name                = "images"
   resource_group_name = azurerm_resource_group.main.name
   account_name        = azurerm_cosmosdb_account.main.name
   database_name       = azurerm_cosmosdb_sql_database.main.name
