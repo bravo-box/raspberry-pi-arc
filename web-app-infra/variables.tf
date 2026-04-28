@@ -22,7 +22,7 @@ variable "environment" {
 }
 
 variable "container_image" {
-  description = "Full container image reference for the web app (e.g. registry/image:tag)."
+  description = "Image repository and tag for the web app, without the registry host (e.g. 'rpi-arc-webapp:latest'). The ACR login server is prepended automatically."
   type        = string
   default     = "rpi-arc-webapp:latest"
 }

@@ -203,8 +203,8 @@ resource "azurerm_linux_web_app" "main" {
     always_on = true
 
     application_stack {
-      docker_image_name        = var.container_image
-      docker_registry_url      = "https://${azurerm_container_registry.main.login_server}"
+      docker_image_name   = "${azurerm_container_registry.main.login_server}/${var.container_image}"
+      docker_registry_url = "https://${azurerm_container_registry.main.login_server}"
     }
   }
 
@@ -219,13 +219,6 @@ resource "azurerm_linux_web_app" "main" {
   }
 
   tags = local.tags
-
-  depends_on = [
-    azurerm_cosmosdb_account.main,
-    azurerm_servicebus_namespace.main,
-    azurerm_storage_account.images,
-    azurerm_container_registry.main,
-  ]
 }
 
 # ── Function App ──────────────────────────────────────────────────────────────
@@ -271,11 +264,4 @@ resource "azurerm_linux_function_app" "main" {
   }
 
   tags = local.tags
-
-  depends_on = [
-    azurerm_cosmosdb_account.main,
-    azurerm_servicebus_namespace.main,
-    azurerm_storage_account.images,
-    azurerm_storage_account.functions,
-  ]
 }
