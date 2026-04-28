@@ -60,7 +60,7 @@ TEMP_INTERVAL = int(os.environ.get("TEMP_INTERVAL", "30"))
 try:
     import paho.mqtt.client as mqtt
 
-    _mqtt_client = mqtt.Client(client_id=MQTT_CLIENT_ID)
+    _mqtt_client = mqtt.Client(mqtt.CallbackAPIVersion.VERSION2, client_id=MQTT_CLIENT_ID)
     _mqtt_client.connect(MQTT_BROKER, MQTT_PORT, keepalive=60)
     _mqtt_client.loop_start()
     MQTT_AVAILABLE = True
@@ -68,7 +68,7 @@ try:
 except Exception as exc:  # pylint: disable=broad-except
     _mqtt_client = None
     MQTT_AVAILABLE = False
-    logger.warning("MQTT not available: %s", exc)
+    logger.warning("MQTT not available (broker=%s:%d): %s", MQTT_BROKER, MQTT_PORT, exc)
 
 # ── HTML template ──────────────────────────────────────────────────────────────
 INDEX_HTML = """
