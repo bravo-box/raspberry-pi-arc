@@ -91,6 +91,9 @@ sudo kubectl apply -k "${K8S_DIR}"
 echo "Waiting for log-writer deployment to be ready..." >&2
 sudo kubectl -n raspberry-pi-arc-demo rollout status deployment/log-writer
 
+echo "Setting permissions on kubeconfig..." >&2
+sudo chmod 644 /etc/rancher/k3s/k3s.yaml
+
 echo ""
 echo "✓ Deployment completed successfully!"
 echo "✓ Logs are written to /var/lib/raspberry-pi-arc/logs/demo.log"
