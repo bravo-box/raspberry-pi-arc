@@ -29,15 +29,25 @@ From repo root on the Raspberry Pi:
 
 ```bash
 chmod +x scripts/*.sh
+
+# Install Docker
+./scripts/install_docker_01_setup_repository.sh
+./scripts/install_docker_02_install.sh
+./scripts/install_docker_03_verify.sh
+
+# Bootstrap k3s and deploy the app
 ./scripts/bootstrap_k3s_and_deploy.sh
 ```
 
 This will:
 
-1. Install k3s (if missing)
-2. Build container image `raspberry-pi-arc-demo:latest`
-3. Import image into k3s containerd
-4. Deploy manifests from `k8s/`
+1. Set up Docker repository
+2. Install Docker
+3. Verify Docker installation
+4. Install k3s (if missing)
+5. Build container image `raspberry-pi-arc-demo:latest`
+6. Import image into k3s containerd
+7. Deploy manifests from `k8s/`
 
 Verify logs on host:
 
