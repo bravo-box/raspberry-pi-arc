@@ -63,6 +63,7 @@ The script connects k3s as an Arc-enabled Kubernetes cluster and installs `Micro
 ## Arc-based automated deployment (GitOps)
 
 ```bash
+export CLOUD=AzureUSGovernment
 export RESOURCE_GROUP="<rg>"
 export CLUSTER_NAME="<arc-cluster-name>"
 export GIT_REPO_URL="https://github.com/bravo-box/raspberry-pi-arc.git"
