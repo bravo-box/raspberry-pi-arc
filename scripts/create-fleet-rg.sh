@@ -35,10 +35,11 @@ Usage: $0 [OPTIONS]
 
 Required:
   --resource-group   <name>    Azure resource group name
-  --subscription-id  <id>      Azure Government subscription ID
   --keyvault-name    <name>    Key Vault name (3-24 alphanumeric chars and dashes)
 
 Optional:
+  --subscription-id  <id>      Azure Government subscription ID
+                               (default: active subscription from 'az account show')
   --location         <region>  Azure Government region (default: usgovvirginia)
                                Supported: usgovvirginia | usgovarizona | usgovtexas
   --help                       Show this help message
@@ -65,7 +66,6 @@ done
 # Validate required arguments
 # ---------------------------------------------------------------------------
 [[ -n "$RESOURCE_GROUP"  ]] || die "--resource-group is required."
-[[ -n "$SUBSCRIPTION_ID" ]] || die "--subscription-id is required."
 [[ -n "$KEYVAULT_NAME"   ]] || die "--keyvault-name is required."
 
 # ---------------------------------------------------------------------------
@@ -78,6 +78,16 @@ if ! az account show >/dev/null 2>&1; then
   die "Not logged into Azure CLI. Run 'az login' first."
 fi
 info "Azure CLI is authenticated."
+
+# ---------------------------------------------------------------------------
+# Resolve subscription ID from active session if not provided
+# ---------------------------------------------------------------------------
+if [[ -z "$SUBSCRIPTION_ID" ]]; then
+  step "No --subscription-id provided; detecting from active Azure CLI session..."
+  SUBSCRIPTION_ID=$(az account show --query id -o tsv 2>/dev/null || true)
+  [[ -n "$SUBSCRIPTION_ID" ]] || die "Could not determine subscription ID from active session. Pass --subscription-id explicitly."
+  info "Using active subscription: ${SUBSCRIPTION_ID}"
+fi
 
 # ---------------------------------------------------------------------------
 # Set cloud and subscription
