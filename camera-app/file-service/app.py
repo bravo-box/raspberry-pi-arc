@@ -57,7 +57,7 @@ logger = logging.getLogger("file-service")
 STOP_EVENT = Event()
 
 # Maps blob_name -> local Path for files awaiting an acknowledgement.
-_pending_lock = threading.Lock()
+PENDING_LOCK = threading.Lock()
 PENDING_DELETE: Dict[str, Path] = {}
 
 
@@ -79,10 +79,8 @@ def load_config(config_file: Path) -> dict:
 
 def check_connectivity(hostname: str = "1.1.1.1", port: int = 443, timeout: int = 5) -> bool:
     """Return True if a TCP connection to *hostname:port* succeeds."""
-    import socket as _socket
-
     try:
-        with _socket.create_connection((hostname, port), timeout=timeout):
+        with socket.create_connection((hostname, port), timeout=timeout):
             return True
     except OSError:
         return False
@@ -186,7 +184,7 @@ def file_watcher_thread(config: dict, sb_client: ServiceBusClient) -> None:
             for path in sorted(OUTBOX_DIR.glob("*")):
                 if not path.is_file():
                     continue
-                with _pending_lock:
+                with PENDING_LOCK:
                     if path.name in PENDING_DELETE:
                         continue
                 if not is_file_stable(path, FILE_STABLE_SECONDS):
@@ -199,7 +197,7 @@ def file_watcher_thread(config: dict, sb_client: ServiceBusClient) -> None:
 
                 try:
                     account_name, container_name, blob_name = upload_file(path, config)
-                    with _pending_lock:
+                    with PENDING_LOCK:
                         PENDING_DELETE[blob_name] = path
                     publish_upload_notification(
                         sb_client, account_name, container_name, blob_name, hostname
@@ -238,7 +236,7 @@ def ack_listener_thread(sb_client: ServiceBusClient) -> None:
                     body = json.loads(str(message))
                     file_name = body.get("file_name")
                     if file_name:
-                        with _pending_lock:
+                        with PENDING_LOCK:
                             local_path = PENDING_DELETE.pop(file_name, None)
                         if local_path is not None and local_path.exists():
                             local_path.unlink()
