@@ -1,0 +1,38 @@
+name: dotnet-tests
+
+on:
+  pull_request:
+    paths:
+      - "function-app/**"
+      - "function-app.tests/**"
+      - "web-app/**"
+      - "web-app.tests/**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Build & Test (.NET 8)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run tests
+        run: bash scripts/run_tests.sh --coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: /tmp/coverage/
+          if-no-files-found: ignore

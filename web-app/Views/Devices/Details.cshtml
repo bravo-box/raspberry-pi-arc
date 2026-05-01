@@ -1,0 +1,86 @@
+@model IReadOnlyList<FleetWebApp.Models.DeviceImage>
+
+@{
+    var device = (FleetWebApp.Models.Device)ViewBag.Device;
+    ViewData["Title"] = $"Images — {device.Hostname}";
+}
+
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item">
+            <a asp-controller="Devices" asp-action="Index">Devices</a>
+        </li>
+        <li class="breadcrumb-item active" aria-current="page">@device.Hostname</li>
+    </ol>
+</nav>
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <h1 class="h3 mb-1">@device.Hostname</h1>
+        <small class="text-muted">
+            First seen: @device.FirstSeen.ToString("yyyy-MM-dd HH:mm") UTC &nbsp;|&nbsp;
+            Last seen:  @device.LastSeen.ToString("yyyy-MM-dd HH:mm") UTC
+        </small>
+    </div>
+    <span class="badge bg-secondary fs-6">@Model.Count images</span>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No images have been uploaded by this device yet.
+    </div>
+}
+else
+{
+    <div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-3">
+        @foreach (var img in Model)
+        {
+            <div class="col">
+                <div class="card h-100">
+                    @if (!string.IsNullOrEmpty(img.ImageUrl))
+                    {
+                        <a href="@img.ImageUrl" target="_blank" rel="noopener noreferrer"
+                           title="@img.FileName">
+                            <img src="@img.ImageUrl"
+                                 alt="@img.FileName"
+                                 class="img-thumb card-img-top"
+                                 loading="lazy" />
+                        </a>
+                    }
+                    else
+                    {
+                        <div class="d-flex align-items-center justify-content-center"
+                             style="height:160px; background:#252942; border-radius:6px 6px 0 0;">
+                            <span class="text-muted small">No preview</span>
+                        </div>
+                    }
+                    <div class="card-body p-2">
+                        <p class="card-text small text-truncate mb-1" title="@img.FileName">
+                            @img.FileName
+                        </p>
+                        <p class="card-text text-muted" style="font-size:0.75rem;">
+                            @img.UploadedAt.ToString("yyyy-MM-dd HH:mm") UTC
+                        </p>
+                    </div>
+                </div>
+            </div>
+        }
+    </div>
+}
+
+@section Scripts {
+    <script>
+        // Notify the user when SAS image URLs are about to expire (after 85 min)
+        // so they can manually refresh rather than suffering a disruptive auto-reload.
+        setTimeout(function () {
+            var banner = document.createElement('div');
+            banner.className = 'alert alert-warning alert-dismissible fade show position-fixed bottom-0 start-50 translate-middle-x mb-3';
+            banner.style.zIndex = '1055';
+            banner.innerHTML = '<strong>Image links may have expired.</strong> ' +
+                '<a href="" class="alert-link">Reload the page</a> to refresh them.' +
+                '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>';
+            document.body.appendChild(banner);
+        }, 85 * 60 * 1000);
+    </script>
+}
