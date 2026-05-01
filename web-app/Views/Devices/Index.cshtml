@@ -1,0 +1,60 @@
+@model IReadOnlyList<FleetWebApp.Models.Device>
+
+@{
+    ViewData["Title"] = "Registered Devices";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0">Registered Devices</h1>
+    <span class="badge bg-secondary fs-6">@Model.Count total</span>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="alert alert-info">
+        No devices have been registered yet. Devices appear here automatically when a Pi
+        publishes its first photo to the <code>photo-upload</code> Service Bus topic.
+    </div>
+}
+else
+{
+    <div class="card">
+        <div class="card-header">
+            <strong>Fleet Overview</strong>
+        </div>
+        <div class="table-responsive">
+            <table class="table table-hover table-dark mb-0">
+                <thead>
+                    <tr>
+                        <th>Hostname</th>
+                        <th>Images Uploaded</th>
+                        <th>First Seen</th>
+                        <th>Last Seen</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var device in Model)
+                    {
+                        <tr>
+                            <td>
+                                <span class="fw-semibold">@device.Hostname</span>
+                            </td>
+                            <td>@device.ImageCount.ToString("N0")</td>
+                            <td>@device.FirstSeen.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            <td>@device.LastSeen.ToString("yyyy-MM-dd HH:mm") UTC</td>
+                            <td class="text-end">
+                                <a asp-controller="Devices"
+                                   asp-action="Details"
+                                   asp-route-hostname="@device.Hostname"
+                                   class="btn btn-sm btn-outline-primary">
+                                    View Images →
+                                </a>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+}

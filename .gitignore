@@ -13,3 +13,19 @@ __pycache__/
 .vscode/
 .idea/
 *.swp
+
+# .NET build artifacts
+bin/
+obj/
+*.user
+*.suo
+.vs/
+publish/
+
+# Terraform
+azure-infra/.terraform/
+azure-infra/.terraform.lock.hcl
+azure-infra/terraform.tfstate
+azure-infra/terraform.tfstate.backup
+azure-infra/terraform.tfvars
+azure-infra/*.tfplan

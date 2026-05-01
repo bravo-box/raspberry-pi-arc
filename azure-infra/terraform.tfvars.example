@@ -1,0 +1,20 @@
+# Copy this file to terraform.tfvars and fill in values before running terraform apply.
+# (terraform.tfvars is git-ignored so it will not be committed.)
+
+resource_group_name = "rpi-fleet-rg"
+location            = "usgovarizona"
+prefix              = "rpifleet"
+
+# Uncomment and adjust any of the optional settings below:
+
+# acr_sku  = "Basic"   # Basic | Standard | Premium
+# web_app_sku = "B1"   # B1 | B2 | P1v3 | etc.
+# cosmos_serverless = true
+# servicebus_sku = "Standard"
+# key_vault_sku  = "standard"
+
+# tags = {
+#   project     = "raspberry-pi-arc"
+#   environment = "production"
+#   managed-by  = "terraform"
+# }

@@ -1,0 +1,13 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet-isolated",
+
+    "ServiceBusConnection": "<your-service-bus-connection-string>",
+
+    "CosmosDb__Endpoint": "https://<your-cosmosdb-account>.documents.azure.us:443/",
+    "CosmosDb__AccountKey": "<your-cosmosdb-primary-key>",
+    "CosmosDb__DatabaseName": "fleet"
+  }
+}
