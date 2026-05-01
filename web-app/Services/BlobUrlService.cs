@@ -18,6 +18,7 @@ namespace FleetWebApp.Services;
 public sealed class BlobUrlService : IBlobUrlService, IDisposable
 {
     private readonly BlobServiceClient _blobServiceClient;
+    private readonly string _accountName;
     private readonly ILogger<BlobUrlService> _logger;
     private readonly SemaphoreSlim _keyLock = new(1, 1);
 
@@ -30,9 +31,13 @@ public sealed class BlobUrlService : IBlobUrlService, IDisposable
 
     private sealed record CachedKey(UserDelegationKey Key, DateTimeOffset ExpiresOn);
 
-    public BlobUrlService(BlobServiceClient blobServiceClient, ILogger<BlobUrlService> logger)
+    public BlobUrlService(
+        BlobServiceClient blobServiceClient,
+        string accountName,
+        ILogger<BlobUrlService> logger)
     {
         _blobServiceClient = blobServiceClient;
+        _accountName       = accountName;
         _logger            = logger;
     }
 
@@ -50,7 +55,7 @@ public sealed class BlobUrlService : IBlobUrlService, IDisposable
         };
         sasBuilder.SetPermissions(BlobSasPermissions.Read);
 
-        var sasParams  = sasBuilder.ToSasQueryParameters(delegationKey, _blobServiceClient.AccountName);
+        var sasParams  = sasBuilder.ToSasQueryParameters(delegationKey, _accountName);
         var uriBuilder = new BlobUriBuilder(
             _blobServiceClient.GetBlobContainerClient(containerName).GetBlobClient(blobName).Uri)
         {

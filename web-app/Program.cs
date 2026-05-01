@@ -51,7 +51,16 @@ builder.Services.AddSingleton(sp =>
 // Application services
 // ---------------------------------------------------------------------------
 builder.Services.AddSingleton<IFleetRepository, CosmosFleetRepository>();
-builder.Services.AddSingleton<IBlobUrlService, BlobUrlService>();
+builder.Services.AddSingleton<IBlobUrlService>(sp =>
+{
+    var cfg         = sp.GetRequiredService<IConfiguration>();
+    var accountName = cfg["Storage:AccountName"]
+        ?? throw new InvalidOperationException("Storage:AccountName is required.");
+    return new BlobUrlService(
+        sp.GetRequiredService<BlobServiceClient>(),
+        accountName,
+        sp.GetRequiredService<ILogger<BlobUrlService>>());
+});
 
 // ---------------------------------------------------------------------------
 // Build & run
