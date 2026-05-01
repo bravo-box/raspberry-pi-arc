@@ -60,15 +60,15 @@ public sealed class DevicesController : Controller
 
         var photoContainer = _configuration["Storage:PhotoContainer"] ?? "photos";
 
-        // Enrich each image record with a short-lived SAS URL for display.
-        var enriched = images.Select(img =>
+        // Enrich each image record with a short-lived User Delegation SAS URL for display.
+        var enriched = await Task.WhenAll(images.Select(async img =>
         {
-            img.ImageUrl = _blobUrlService.GetSasUrl(
-                containerName:    img.Container.Length > 0 ? img.Container : photoContainer,
-                blobName:         img.FileName,
-                validForMinutes:  120);
+            img.ImageUrl = await _blobUrlService.GetSasUrlAsync(
+                containerName:   img.Container.Length > 0 ? img.Container : photoContainer,
+                blobName:        img.FileName,
+                validForMinutes: 120);
             return img;
-        }).ToList();
+        }));
 
         ViewBag.Device = device;
         return View(enriched);

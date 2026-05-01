@@ -1,4 +1,4 @@
-using Azure.Storage;
+using Azure.Identity;
 using Azure.Storage.Blobs;
 using FleetWebApp.Services;
 using Microsoft.Azure.Cosmos;
@@ -31,20 +31,20 @@ builder.Services.AddSingleton(sp =>
 });
 
 // ---------------------------------------------------------------------------
-// Azure Blob Storage (for SAS URL generation)
+// Azure Blob Storage – accessed via system-assigned managed identity.
+// In App Service the managed identity is used automatically; locally the
+// DefaultAzureCredential falls back to the Azure CLI credential.
+// No storage account key is required.
 // ---------------------------------------------------------------------------
 builder.Services.AddSingleton(sp =>
 {
     var cfg         = sp.GetRequiredService<IConfiguration>();
     var accountName = cfg["Storage:AccountName"]
         ?? throw new InvalidOperationException("Storage:AccountName is required.");
-    var accountKey  = cfg["Storage:AccountKey"]
-        ?? throw new InvalidOperationException("Storage:AccountKey is required.");
 
-    var credential = new StorageSharedKeyCredential(accountName, accountKey);
     // Azure Government storage endpoint
     var blobEndpoint = new Uri($"https://{accountName}.blob.core.usgovcloudapi.net");
-    return new BlobServiceClient(blobEndpoint, credential);
+    return new BlobServiceClient(blobEndpoint, new DefaultAzureCredential());
 });
 
 // ---------------------------------------------------------------------------

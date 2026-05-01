@@ -295,11 +295,27 @@ resource "azurerm_linux_web_app" "fleet" {
     CosmosDb__AccountKey  = azurerm_cosmosdb_account.fleet.primary_key
     CosmosDb__DatabaseName = var.cosmos_db_name
 
-    # Storage (for generating image SAS URLs)
-    Storage__AccountName   = azurerm_storage_account.fleet.name
-    Storage__AccountKey    = azurerm_storage_account.fleet.primary_access_key
+    # Storage – account name used to build the Gov endpoint; access is via managed identity.
+    Storage__AccountName    = azurerm_storage_account.fleet.name
     Storage__PhotoContainer = azurerm_storage_container.photos.name
   }
+}
+
+# Grant the web app's managed identity 'Storage Blob Data Reader' on the storage account.
+# Required to read blobs and to generate User Delegation SAS tokens via the managed identity.
+resource "azurerm_role_assignment" "web_app_storage_reader" {
+  scope                = azurerm_storage_account.fleet.id
+  role_definition_name = "Storage Blob Data Reader"
+  principal_id         = azurerm_linux_web_app.fleet.identity[0].principal_id
+}
+
+# Grant the web app's managed identity 'Storage Blob Data Delegator' on the storage account.
+# Required to call GetUserDelegationKey so the app can mint user-delegation SAS tokens
+# without needing the storage account key.
+resource "azurerm_role_assignment" "web_app_storage_delegator" {
+  scope                = azurerm_storage_account.fleet.id
+  role_definition_name = "Storage Blob Data Delegator"
+  principal_id         = azurerm_linux_web_app.fleet.identity[0].principal_id
 }
 
 # Grant the web app's managed identity access to Key Vault secrets.
