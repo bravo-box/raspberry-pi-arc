@@ -1,4 +1,5 @@
 using Azure.Messaging.ServiceBus;
+using Azure.Storage.Blobs;
 using FleetFunctionApp.Services;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Functions.Worker;
@@ -26,12 +27,21 @@ var host = new HostBuilder()
             });
         });
 
-        // Service Bus client used to send photo-processed acknowledgements
+        // Service Bus client used to send photo-processed acknowledgements and
+        // device-registered responses.
         services.AddSingleton(sp =>
         {
             var connectionString = context.Configuration["ServiceBusConnection"]
                 ?? throw new InvalidOperationException("ServiceBusConnection is not configured.");
             return new ServiceBusClient(connectionString);
+        });
+
+        // Blob Storage client used to create per-device containers on registration.
+        services.AddSingleton(sp =>
+        {
+            var connectionString = context.Configuration["Storage__ConnectionString"]
+                ?? throw new InvalidOperationException("Storage__ConnectionString is not configured.");
+            return new BlobServiceClient(connectionString);
         });
 
         // Fleet repository

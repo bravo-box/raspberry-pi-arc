@@ -1,28 +1,28 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: camera-app
-  namespace: raspberry-pi-arc-demo
+  name: {{ include "camera-app.fullname" . }}
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "camera-app.labels" . | nindent 4 }}
 spec:
-  replicas: 1
+  replicas: {{ .Values.replicaCount }}
   selector:
     matchLabels:
-      app: camera-app
+      {{- include "camera-app.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: camera-app
+        {{- include "camera-app.selectorLabels" . | nindent 8 }}
     spec:
-      # The video group (GID 44) gives libcamera/picamera2 access to
-      # /dev/video* and /dev/media* device files on Ubuntu/Raspberry Pi OS.
       securityContext:
-        supplementalGroups:
-          - 44   # video group
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
 
       initContainers:
         # Ensure the shared outbox directory is writable by appuser (UID 1000).
         - name: init-outbox-permissions
-          image: busybox:1.36
+          image: "{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}"
+          imagePullPolicy: {{ .Values.images.busybox.pullPolicy }}
           securityContext:
             runAsUser: 0
             allowPrivilegeEscalation: false
@@ -37,7 +37,8 @@ spec:
         # Copy the read-only Secret into the writable config-data emptyDir so
         # that registration-service can persist device-registration.json there.
         - name: init-config
-          image: busybox:1.36
+          image: "{{ .Values.images.busybox.repository }}:{{ .Values.images.busybox.tag }}"
+          imagePullPolicy: {{ .Values.images.busybox.pullPolicy }}
           securityContext:
             runAsUser: 0
             allowPrivilegeEscalation: false
@@ -53,49 +54,33 @@ spec:
               mountPath: /config
 
       containers:
-        # ------------------------------------------------------------------
-        # camera-service: waits for 'TaskCamera' Service Bus messages and
-        # captures JPEG images into the shared /outbox volume.
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------
+        # camera-service: subscribes to 'TaskCamera' and captures images.
+        # ----------------------------------------------------------------
         - name: camera-service
-          image: camera-service:latest
-          imagePullPolicy: IfNotPresent
-          # The video group (GID 44) gives libcamera/picamera2 access to
-          # /dev/video* and /dev/media* device files on Ubuntu/Raspberry Pi OS.
+          image: "{{ .Values.images.cameraService.repository }}:{{ .Values.images.cameraService.tag }}"
+          imagePullPolicy: {{ .Values.images.cameraService.pullPolicy }}
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           volumeMounts:
             - name: outbox
               mountPath: /outbox
             - name: config-data
               mountPath: /config
               readOnly: true
-            # Camera device files – paths may vary by Pi hardware revision.
             - name: dev-video0
               mountPath: /dev/video0
             - name: dev-media0
               mountPath: /dev/media0
 
-        # ------------------------------------------------------------------
-        # file-service: polls /outbox, uploads complete files to Azure Blob
-        # Storage, publishes 'photo-upload' notifications, and deletes files
-        # once an acknowledgement arrives on the 'photo-processed' topic.
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------
+        # file-service: uploads images and manages acknowledgements.
+        # ----------------------------------------------------------------
         - name: file-service
-          image: file-service:latest
-          imagePullPolicy: IfNotPresent
+          image: "{{ .Values.images.fileService.repository }}:{{ .Values.images.fileService.tag }}"
+          imagePullPolicy: {{ .Values.images.fileService.pullPolicy }}
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
           volumeMounts:
             - name: outbox
               mountPath: /outbox
@@ -103,20 +88,20 @@ spec:
               mountPath: /config
               readOnly: true
 
-        # ------------------------------------------------------------------
-        # registration-service: registers the device on first boot and sends
-        # periodic health-check heartbeats every 30 seconds.
-        # ------------------------------------------------------------------
+        # ----------------------------------------------------------------
+        # registration-service: registers device on first boot and sends
+        # health-check heartbeats every 30 seconds.
+        # ----------------------------------------------------------------
         - name: registration-service
-          image: registration-service:latest
-          imagePullPolicy: IfNotPresent
+          image: "{{ .Values.images.registrationService.repository }}:{{ .Values.images.registrationService.tag }}"
+          imagePullPolicy: {{ .Values.images.registrationService.pullPolicy }}
           securityContext:
-            runAsNonRoot: true
-            runAsUser: 1000
-            allowPrivilegeEscalation: false
-            capabilities:
-              drop:
-                - ALL
+            {{- toYaml .Values.containerSecurityContext | nindent 12 }}
+          env:
+            - name: HEALTH_CHECK_INTERVAL
+              value: {{ .Values.registrationService.healthCheckIntervalSeconds | quote }}
+            - name: REGISTRATION_SUBSCRIPTION
+              value: {{ .Values.registrationService.registrationSubscription | quote }}
           volumeMounts:
             # Mounted read-write so device-registration.json can be persisted.
             - name: config-data
@@ -127,22 +112,21 @@ spec:
         - name: outbox
           emptyDir: {}
 
-        # The Kubernetes Secret is projected here (read-only).  An initContainer
+        # The Kubernetes Secret is projected here (read-only). An initContainer
         # copies config.json into config-data so services can read it, and the
         # registration-service can write device-registration.json alongside it.
         - name: config-secret
           secret:
-            secretName: camera-app-config
+            secretName: {{ .Values.configSecretName }}
         - name: config-data
           emptyDir: {}
 
         # Camera device nodes exposed from the Raspberry Pi host.
-        # Adjust paths to match the actual device nodes on your hardware.
         - name: dev-video0
           hostPath:
-            path: /dev/video0
+            path: {{ .Values.cameraDevices.video0 }}
             type: CharDevice
         - name: dev-media0
           hostPath:
-            path: /dev/media0
+            path: {{ .Values.cameraDevices.media0 }}
             type: CharDevice
