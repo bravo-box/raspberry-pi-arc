@@ -1,5 +1,21 @@
+# ── Stage 0: shared base with Raspberry Pi OS repository ─────────────────────
+# python3-libcamera and python3-kms++ are only present in the Raspberry Pi OS
+# APT repository, not in standard Debian Bookworm.  Add that repo once here so
+# both the deps and runtime stages can install Pi-specific packages.
+# This image is built for linux/arm64 to match Raspberry Pi hardware.
+FROM python:3.11-slim-bookworm AS base
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+        ca-certificates curl gnupg \
+    && curl -fsSL https://archive.raspberrypi.com/debian/raspberrypi.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/raspberrypi.gpg \
+    && echo "deb [arch=arm64 signed-by=/etc/apt/keyrings/raspberrypi.gpg] \
+        https://archive.raspberrypi.com/debian/ bookworm main" \
+        > /etc/apt/sources.list.d/raspi.list \
+    && rm -rf /var/lib/apt/lists/*
+
 # ── Stage 1: dependency layer ─────────────────────────────────────────────────
-FROM python:3.11-slim-bookworm AS deps
+FROM base AS deps
 
 WORKDIR /app
 
@@ -18,7 +34,7 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
-FROM python:3.11-slim-bookworm AS runtime
+FROM base AS runtime
 
 LABEL maintainer="raspberry-pi-arc"
 LABEL description="Raspberry Pi camera application"
