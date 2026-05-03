@@ -436,8 +436,10 @@ resource "azurerm_linux_function_app" "fleet" {
     CosmosDb__AccountKey   = azurerm_cosmosdb_account.fleet.primary_key
     CosmosDb__DatabaseName = var.cosmos_db_name
 
-    # Blob Storage – used by RegisterDeviceFunction to create per-device containers.
-    Storage__ConnectionString = "DefaultEndpointsProtocol=https;AccountName=${azurerm_storage_account.fleet.name};AccountKey=${azurerm_storage_account.fleet.primary_access_key};EndpointSuffix=core.windows.net"
+    # Blob Storage – account name for per-device container creation.
+    # Access is via the function app's system-assigned managed identity;
+    # the Storage Blob Data Contributor role is granted below.
+    Storage__AccountName = azurerm_storage_account.fleet.name
 
     APPINSIGHTS_INSTRUMENTATIONKEY = azurerm_application_insights.fleet.instrumentation_key
   }
@@ -450,6 +452,14 @@ resource "azurerm_key_vault_access_policy" "function_app" {
   object_id    = azurerm_linux_function_app.fleet.identity[0].principal_id
 
   secret_permissions = ["Get", "List"]
+}
+
+# Grant the function app's managed identity 'Storage Blob Data Contributor' on
+# the storage account so RegisterDeviceFunction can create per-device containers.
+resource "azurerm_role_assignment" "function_app_storage_contributor" {
+  scope                = azurerm_storage_account.fleet.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.fleet.identity[0].principal_id
 }
 
 # ---------------------------------------------------------------------------

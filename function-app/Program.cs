@@ -1,3 +1,4 @@
+using Azure.Identity;
 using Azure.Messaging.ServiceBus;
 using Azure.Storage.Blobs;
 using FleetFunctionApp.Services;
@@ -37,11 +38,14 @@ var host = new HostBuilder()
         });
 
         // Blob Storage client used to create per-device containers on registration.
+        // Uses the function app's system-assigned managed identity via DefaultAzureCredential
+        // so no storage account key is required.
         services.AddSingleton(sp =>
         {
-            var connectionString = context.Configuration["Storage__ConnectionString"]
-                ?? throw new InvalidOperationException("Storage__ConnectionString is not configured.");
-            return new BlobServiceClient(connectionString);
+            var accountName = context.Configuration["Storage__AccountName"]
+                ?? throw new InvalidOperationException("Storage__AccountName is not configured.");
+            var serviceUri = new Uri($"https://{accountName}.blob.core.windows.net");
+            return new BlobServiceClient(serviceUri, new DefaultAzureCredential());
         });
 
         // Fleet repository

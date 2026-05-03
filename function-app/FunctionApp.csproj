@@ -21,6 +21,8 @@
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.1" />
     <!-- Blob Storage SDK for creating per-device containers on registration -->
     <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <!-- Azure Identity SDK for DefaultAzureCredential (managed identity) -->
+    <PackageReference Include="Azure.Identity" Version="1.12.1" />
   </ItemGroup>
 
   <ItemGroup>
