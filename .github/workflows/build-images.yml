@@ -1,0 +1,136 @@
+name: build-images
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "web-app/**"
+      - "rpi-app/**"
+      - "camera-app/**"
+      - "scripts/build-images.sh"
+      - ".github/workflows/build-images.yml"
+  pull_request:
+    paths:
+      - "web-app/**"
+      - "rpi-app/**"
+      - "camera-app/**"
+      - "scripts/build-images.sh"
+      - ".github/workflows/build-images.yml"
+  workflow_dispatch:
+    inputs:
+      images:
+        description: "Images to build (space-separated list or 'all')"
+        required: false
+        default: "all"
+      tag:
+        description: "Image tag (default: latest)"
+        required: false
+        default: "latest"
+      push:
+        description: "Push images to registry"
+        required: false
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+  packages: write  # required to push to ghcr.io
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Job 1: run all automated tests before building any images
+  # ---------------------------------------------------------------------------
+  test:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup .NET 8
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "8.0.x"
+
+      - name: Run .NET tests
+        run: bash scripts/run_tests.sh --coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-reports
+          path: /tmp/coverage/
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------------------------------
+  # Job 2: build all container images and push to ghcr.io
+  # ---------------------------------------------------------------------------
+  build-and-push:
+    name: Build & Push Images
+    needs: test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # QEMU enables cross-compilation of ARM64 images (rpi-app, camera-service,
+      # file-service) on the amd64 GitHub Actions runner.
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GitHub Container Registry
+        # Only log in when we will actually push (not on PR builds)
+        if: >
+          github.event_name == 'push' ||
+          (github.event_name == 'workflow_dispatch' && inputs.push == true)
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine image tag
+        id: meta
+        run: |
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" && -n "${{ inputs.tag }}" ]]; then
+            echo "tag=${{ inputs.tag }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "tag=latest" >> "$GITHUB_OUTPUT"
+          else
+            # For PRs and other branches use the short commit SHA
+            echo "tag=sha-${GITHUB_SHA::7}" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build (and push) images
+        env:
+          REPO: ${{ github.repository }}
+          TAG: ${{ steps.meta.outputs.tag }}
+        run: |
+          # Determine which images to build
+          if [[ "${{ github.event_name }}" == "workflow_dispatch" ]]; then
+            IMAGES="${{ inputs.images }}"
+          else
+            IMAGES="all"
+          fi
+
+          # Push on main branch pushes, or on workflow_dispatch when push=true
+          PUSH_FLAG=""
+          if [[ "${{ github.event_name }}" == "push" ]] || \
+             [[ "${{ github.event_name }}" == "workflow_dispatch" && "${{ inputs.push }}" == "true" ]]; then
+            PUSH_FLAG="--push"
+          fi
+
+          bash scripts/build-images.sh \
+            ${PUSH_FLAG} \
+            --registry ghcr.io \
+            --repo "${REPO}" \
+            --tag "${TAG}" \
+            ${IMAGES}
