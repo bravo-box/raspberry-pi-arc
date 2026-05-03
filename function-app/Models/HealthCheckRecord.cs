@@ -5,6 +5,10 @@ namespace FleetFunctionApp.Models;
 /// <summary>
 /// Cosmos DB document stored in the <c>health-checks</c> container.
 /// One document per health-check heartbeat received from a Pi device.
+///
+/// Uses <c>Newtonsoft.Json</c> attributes to match the serialization
+/// convention used by all other Cosmos DB document models in this project
+/// (<see cref="DeviceRecord"/>, <see cref="ImageRecord"/>).
 /// </summary>
 public sealed class HealthCheckRecord
 {
