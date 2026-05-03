@@ -20,8 +20,16 @@ RUN pip install --no-cache-dir -r requirements.txt
 # ── Stage 2: runtime image ────────────────────────────────────────────────────
 FROM python:3.11-slim-bookworm AS runtime
 
-LABEL maintainer="raspberry-pi-arc"
-LABEL description="Raspberry Pi camera application"
+ARG GIT_REVISION
+ARG BUILD_DATE
+ARG IMAGE_VERSION
+
+LABEL maintainer="raspberry-pi-arc" \
+      description="Raspberry Pi camera application" \
+      org.opencontainers.image.source="https://github.com/bravo-box/raspberry-pi-arc" \
+      org.opencontainers.image.revision="${GIT_REVISION}" \
+      org.opencontainers.image.created="${BUILD_DATE}" \
+      org.opencontainers.image.version="${IMAGE_VERSION}"
 
 WORKDIR /app
 

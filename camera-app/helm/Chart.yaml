@@ -1,0 +1,19 @@
+apiVersion: v2
+name: camera-app
+description: >
+  Deploys the camera-app pod containing three containers – camera-service,
+  file-service, and registration-service – on a Raspberry Pi running k3s with
+  Azure Arc.
+type: application
+version: 0.1.0
+appVersion: "latest"
+keywords:
+  - raspberry-pi
+  - azure
+  - arc
+  - camera
+home: https://github.com/bravo-box/raspberry-pi-arc
+sources:
+  - https://github.com/bravo-box/raspberry-pi-arc
+maintainers:
+  - name: raspberry-pi-arc

@@ -1,0 +1,68 @@
+# Default values for camera-app Helm chart.
+# Override any of these in a values override file or with --set on the command line.
+
+# ---------------------------------------------------------------------------
+# Namespace
+# ---------------------------------------------------------------------------
+namespace: raspberry-pi-arc-demo
+
+# ---------------------------------------------------------------------------
+# Image configuration
+# ---------------------------------------------------------------------------
+images:
+  cameraService:
+    repository: camera-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  fileService:
+    repository: file-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  registrationService:
+    repository: registration-service
+    tag: latest
+    pullPolicy: IfNotPresent
+  busybox:
+    repository: busybox
+    tag: "1.36"
+    pullPolicy: IfNotPresent
+
+# ---------------------------------------------------------------------------
+# Kubernetes Secret name that contains config.json
+# ---------------------------------------------------------------------------
+configSecretName: camera-app-config
+
+# ---------------------------------------------------------------------------
+# Security context
+# ---------------------------------------------------------------------------
+podSecurityContext:
+  supplementalGroups:
+    - 44  # video group – required for libcamera/picamera2
+
+containerSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+
+# ---------------------------------------------------------------------------
+# Camera device host paths
+# Adjust to match the device nodes present on your Raspberry Pi hardware.
+# ---------------------------------------------------------------------------
+cameraDevices:
+  video0: /dev/video0
+  media0: /dev/media0
+
+# ---------------------------------------------------------------------------
+# Registration service
+# ---------------------------------------------------------------------------
+registrationService:
+  healthCheckIntervalSeconds: 30
+  registrationSubscription: registration-service
+
+# ---------------------------------------------------------------------------
+# Replica count (should stay at 1 for a single-device deployment)
+# ---------------------------------------------------------------------------
+replicaCount: 1
