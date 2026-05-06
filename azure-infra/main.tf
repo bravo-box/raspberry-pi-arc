@@ -146,6 +146,22 @@ resource "azurerm_cosmosdb_sql_container" "images" {
   }
 }
 
+# Container: health-checks – one document per health-check heartbeat from a Pi device.
+resource "azurerm_cosmosdb_sql_container" "health_checks" {
+  name                = "health-checks"
+  resource_group_name = azurerm_resource_group.fleet.name
+  account_name        = azurerm_cosmosdb_account.fleet.name
+  database_name       = azurerm_cosmosdb_sql_database.fleet.name
+  partition_key_path  = "/deviceId"
+
+  indexing_policy {
+    indexing_mode = "consistent"
+
+    included_path { path = "/*" }
+    excluded_path { path = "/\"_etag\"/?" }
+  }
+}
+
 # ---------------------------------------------------------------------------
 # Azure Service Bus
 # Topics required by the camera-app:
@@ -212,6 +228,48 @@ resource "azurerm_servicebus_subscription" "photo_processed_file_service" {
 resource "azurerm_servicebus_subscription" "photo_processed_cloud_audit" {
   name               = "cloud-audit"
   topic_id           = azurerm_servicebus_topic.photo_processed.id
+  max_delivery_count = 5
+}
+
+# --- register-device topic --------------------------------------------------
+# Published by the Pi's registration-service on first boot.
+resource "azurerm_servicebus_topic" "register_device" {
+  name         = "register-device"
+  namespace_id = azurerm_servicebus_namespace.fleet.id
+}
+
+# Subscription consumed by the cloud-side RegisterDeviceFunction.
+resource "azurerm_servicebus_subscription" "register_device_function" {
+  name               = "registration-function"
+  topic_id           = azurerm_servicebus_topic.register_device.id
+  max_delivery_count = 5
+}
+
+# --- device-registered topic ------------------------------------------------
+# Published by the cloud function to return the assigned device GUID.
+resource "azurerm_servicebus_topic" "device_registered" {
+  name         = "device-registered"
+  namespace_id = azurerm_servicebus_namespace.fleet.id
+}
+
+# Subscription consumed by the Pi's registration-service.
+resource "azurerm_servicebus_subscription" "device_registered_pi" {
+  name               = "registration-service"
+  topic_id           = azurerm_servicebus_topic.device_registered.id
+  max_delivery_count = 5
+}
+
+# --- health-check topic -----------------------------------------------------
+# Published by the Pi's registration-service every 30 seconds.
+resource "azurerm_servicebus_topic" "health_check" {
+  name         = "health-check"
+  namespace_id = azurerm_servicebus_namespace.fleet.id
+}
+
+# Subscription consumed by the cloud-side HealthCheckFunction.
+resource "azurerm_servicebus_subscription" "health_check_function" {
+  name               = "health-function"
+  topic_id           = azurerm_servicebus_topic.health_check.id
   max_delivery_count = 5
 }
 
@@ -378,6 +436,11 @@ resource "azurerm_linux_function_app" "fleet" {
     CosmosDb__AccountKey   = azurerm_cosmosdb_account.fleet.primary_key
     CosmosDb__DatabaseName = var.cosmos_db_name
 
+    # Blob Storage – account name for per-device container creation.
+    # Access is via the function app's system-assigned managed identity;
+    # the Storage Blob Data Contributor role is granted below.
+    Storage__AccountName = azurerm_storage_account.fleet.name
+
     APPINSIGHTS_INSTRUMENTATIONKEY = azurerm_application_insights.fleet.instrumentation_key
   }
 }
@@ -389,6 +452,14 @@ resource "azurerm_key_vault_access_policy" "function_app" {
   object_id    = azurerm_linux_function_app.fleet.identity[0].principal_id
 
   secret_permissions = ["Get", "List"]
+}
+
+# Grant the function app's managed identity 'Storage Blob Data Contributor' on
+# the storage account so RegisterDeviceFunction can create per-device containers.
+resource "azurerm_role_assignment" "function_app_storage_contributor" {
+  scope                = azurerm_storage_account.fleet.id
+  role_definition_name = "Storage Blob Data Contributor"
+  principal_id         = azurerm_linux_function_app.fleet.identity[0].principal_id
 }
 
 # ---------------------------------------------------------------------------

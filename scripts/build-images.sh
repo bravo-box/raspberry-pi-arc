@@ -12,14 +12,13 @@
 #                       (default: bravo-box/raspberry-pi-arc).
 #                       Must be lowercase for ghcr.io.
 #   --tag TAG           Image tag (default: latest).
-#   --platform PLAT     Override the target platform(s) for all images, e.g.
+#   --platform PLAT     Target platform(s) for docker buildx, e.g.
 #                       linux/amd64 or linux/amd64,linux/arm64.
-#                       When omitted, each image uses its own default platform
-#                       (Pi services default to linux/arm64; web-app uses the
-#                       host default).
+#                       When set without --push, requires a single platform
+#                       (buildx --load limitation).
 #
 # IMAGE is one or more of:
-#   web-app  rpi-app  camera-service  file-service
+#   web-app  rpi-app  camera-service  file-service  registration-service
 #   all      (build every image – also the default when no IMAGE is given)
 #
 # Examples:
@@ -35,8 +34,8 @@
 #   # Build all images and push to a custom registry:
 #   ./scripts/build-images.sh --push --registry myregistry.azurecr.io --repo myorg/myrepo
 #
-#   # Override platform for all images:
-#   ./scripts/build-images.sh --push --platform linux/amd64
+#   # Cross-compile all images for linux/arm64 and push:
+#   ./scripts/build-images.sh --push --platform linux/arm64
 # ---------------------------------------------------------------------------
 set -euo pipefail
 
@@ -94,7 +93,10 @@ IMAGE_CONTEXT["file-service"]="camera-app/file-service"
 IMAGE_DOCKERFILE["file-service"]="Dockerfile"
 IMAGE_DEFAULT_PLATFORM["file-service"]="linux/arm64"
 
-ALL_IMAGES=("web-app" "rpi-app" "camera-service" "file-service")
+IMAGE_CONTEXT["registration-service"]="camera-app/registration-service"
+IMAGE_DOCKERFILE["registration-service"]="Dockerfile"
+
+ALL_IMAGES=("web-app" "rpi-app" "camera-service" "file-service" "registration-service")
 
 # ---------------------------------------------------------------------------
 # Parse arguments
@@ -105,9 +107,9 @@ while [[ $# -gt 0 ]]; do
     --registry)     REGISTRY="$2"; shift 2 ;;
     --repo)         REPO="$2"; shift 2 ;;
     --tag)          TAG="$2"; shift 2 ;;
-    --platform)     PLATFORM_OVERRIDE="$2"; shift 2 ;;
+    --platform)     PLATFORM="$2"; shift 2 ;;
     all)            SELECTED_IMAGES=("${ALL_IMAGES[@]}"); shift ;;
-    web-app|rpi-app|camera-service|file-service)
+    web-app|rpi-app|camera-service|file-service|registration-service)
                     SELECTED_IMAGES+=("$1"); shift ;;
     *)              die "Unknown argument: '$1'. Valid images: all ${ALL_IMAGES[*]}" ;;
   esac
@@ -118,7 +120,7 @@ if [[ ${#SELECTED_IMAGES[@]} -eq 0 ]]; then
   SELECTED_IMAGES=("${ALL_IMAGES[@]}")
 fi
 
-# Normalize repo to lowercase (required by ghcr.io)
+# Normalise repo to lowercase (required by ghcr.io)
 REPO="${REPO,,}"
 
 # ---------------------------------------------------------------------------

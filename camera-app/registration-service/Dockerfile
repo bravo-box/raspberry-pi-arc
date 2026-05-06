@@ -5,7 +5,7 @@ ARG BUILD_DATE
 ARG IMAGE_VERSION
 
 LABEL maintainer="raspberry-pi-arc" \
-      description="File service – uploads outbox images to Azure Blob Storage and manages acknowledgements" \
+      description="Registration service – registers device on first boot and publishes periodic health-check messages" \
       org.opencontainers.image.source="https://github.com/bravo-box/raspberry-pi-arc" \
       org.opencontainers.image.revision="${GIT_REVISION}" \
       org.opencontainers.image.created="${BUILD_DATE}" \

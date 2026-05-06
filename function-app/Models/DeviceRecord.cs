@@ -22,4 +22,11 @@ public sealed class DeviceRecord
 
     [JsonProperty("imageCount")]
     public int ImageCount { get; set; }
+
+    /// <summary>
+    /// Unique device GUID assigned by the cloud during first-time registration.
+    /// Empty string for devices registered via the legacy photo-upload path.
+    /// </summary>
+    [JsonProperty("deviceId")]
+    public string DeviceId { get; set; } = string.Empty;
 }

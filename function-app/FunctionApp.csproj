@@ -17,8 +17,12 @@
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.ServiceBus" Version="5.4.0" />
     <!-- Cosmos DB SDK for output persistence -->
     <PackageReference Include="Microsoft.Azure.Cosmos" Version="3.38.1" />
-    <!-- Service Bus SDK for sending photo-processed acknowledgements -->
+    <!-- Service Bus SDK for sending photo-processed acknowledgements and device-registered responses -->
     <PackageReference Include="Azure.Messaging.ServiceBus" Version="7.18.1" />
+    <!-- Blob Storage SDK for creating per-device containers on registration -->
+    <PackageReference Include="Azure.Storage.Blobs" Version="12.22.2" />
+    <!-- Azure Identity SDK for DefaultAzureCredential (managed identity) -->
+    <PackageReference Include="Azure.Identity" Version="1.12.1" />
   </ItemGroup>
 
   <ItemGroup>
