@@ -95,6 +95,7 @@ IMAGE_DEFAULT_PLATFORM["file-service"]="linux/arm64"
 
 IMAGE_CONTEXT["registration-service"]="camera-app/registration-service"
 IMAGE_DOCKERFILE["registration-service"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["registration-service"]="linux/arm64"
 
 ALL_IMAGES=("web-app" "rpi-app" "camera-service" "file-service" "registration-service")
 
@@ -107,7 +108,7 @@ while [[ $# -gt 0 ]]; do
     --registry)     REGISTRY="$2"; shift 2 ;;
     --repo)         REPO="$2"; shift 2 ;;
     --tag)          TAG="$2"; shift 2 ;;
-    --platform)     PLATFORM="$2"; shift 2 ;;
+    --platform)     PLATFORM_OVERRIDE="$2"; shift 2 ;;
     all)            SELECTED_IMAGES=("${ALL_IMAGES[@]}"); shift ;;
     web-app|rpi-app|camera-service|file-service|registration-service)
                     SELECTED_IMAGES+=("$1"); shift ;;

@@ -50,8 +50,10 @@ LABEL maintainer="raspberry-pi-arc" \
 WORKDIR /app
 
 # Install runtime system libraries needed by libcamera / picamera2
+# Note: libcamera0 is intentionally omitted here; python3-libcamera pulls in
+# the correct versioned package (libcamera0.5 in the Raspberry Pi OS repo)
+# automatically.  Requesting libcamera0 explicitly conflicts with libcamera0.5.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-        libcamera0 \
         python3-libcamera \
         python3-kms++ \
     && rm -rf /var/lib/apt/lists/*
