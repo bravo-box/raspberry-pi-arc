@@ -63,29 +63,39 @@ PUSH=false
 REGISTRY="ghcr.io"
 REPO="bravo-box/raspberry-pi-arc"
 TAG="latest"
-PLATFORM=""
+PLATFORM_OVERRIDE=""   # set by --platform; empty means use per-image default
 SELECTED_IMAGES=()
 
 # ---------------------------------------------------------------------------
-# Known images: associative arrays of context path and Dockerfile name
+# Known images: context path, Dockerfile name, and default build platform.
+#
+# Pi-targeting services (rpi-app, camera-service, file-service) default to
+# linux/arm64 to match Raspberry Pi hardware.  The web-app runs on Azure App
+# Service (amd64) so it uses the host/runner default (no explicit platform).
 # ---------------------------------------------------------------------------
 declare -A IMAGE_CONTEXT
 declare -A IMAGE_DOCKERFILE
+declare -A IMAGE_DEFAULT_PLATFORM
 
 IMAGE_CONTEXT["web-app"]="web-app"
 IMAGE_DOCKERFILE["web-app"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["web-app"]=""
 
 IMAGE_CONTEXT["rpi-app"]="rpi-app"
 IMAGE_DOCKERFILE["rpi-app"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["rpi-app"]="linux/arm64"
 
 IMAGE_CONTEXT["camera-service"]="camera-app/camera-service"
 IMAGE_DOCKERFILE["camera-service"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["camera-service"]="linux/arm64"
 
 IMAGE_CONTEXT["file-service"]="camera-app/file-service"
 IMAGE_DOCKERFILE["file-service"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["file-service"]="linux/arm64"
 
 IMAGE_CONTEXT["registration-service"]="camera-app/registration-service"
 IMAGE_DOCKERFILE["registration-service"]="Dockerfile"
+IMAGE_DEFAULT_PLATFORM["registration-service"]="linux/arm64"
 
 ALL_IMAGES=("web-app" "rpi-app" "camera-service" "file-service" "registration-service")
 
@@ -98,7 +108,7 @@ while [[ $# -gt 0 ]]; do
     --registry)     REGISTRY="$2"; shift 2 ;;
     --repo)         REPO="$2"; shift 2 ;;
     --tag)          TAG="$2"; shift 2 ;;
-    --platform)     PLATFORM="$2"; shift 2 ;;
+    --platform)     PLATFORM_OVERRIDE="$2"; shift 2 ;;
     all)            SELECTED_IMAGES=("${ALL_IMAGES[@]}"); shift ;;
     web-app|rpi-app|camera-service|file-service|registration-service)
                     SELECTED_IMAGES+=("$1"); shift ;;
@@ -137,7 +147,7 @@ info "Registry    : ${REGISTRY}"
 info "Repository  : ${REPO}"
 info "Tag         : ${TAG}"
 info "Push        : ${PUSH}"
-info "Platform    : ${PLATFORM:-<host default>}"
+info "Platform    : ${PLATFORM_OVERRIDE:-<per-image default>}"
 info "Git revision: ${GIT_REVISION}"
 info "Images      : ${SELECTED_IMAGES[*]}"
 
@@ -152,7 +162,10 @@ for img in "${SELECTED_IMAGES[@]}"; do
   dockerfile="${context}/${IMAGE_DOCKERFILE[$img]}"
   full_image="${REGISTRY}/${REPO}/${img}:${TAG}"
 
-  step "Building ${full_image}..."
+  # Resolve effective platform: explicit override wins; fall back to per-image default
+  effective_platform="${PLATFORM_OVERRIDE:-${IMAGE_DEFAULT_PLATFORM[$img]}}"
+
+  step "Building ${full_image} (platform: ${effective_platform:-<host default>})..."
 
   if [[ ! -f "${dockerfile}" ]]; then
     warn "Dockerfile not found for '${img}': ${dockerfile} – skipping."
@@ -172,18 +185,18 @@ for img in "${SELECTED_IMAGES[@]}"; do
     "--label"      "org.opencontainers.image.version=${TAG}"
   )
 
-  if [[ -n "${PLATFORM}" ]]; then
-    common_args+=("--platform" "${PLATFORM}")
+  if [[ -n "${effective_platform}" ]]; then
+    common_args+=("--platform" "${effective_platform}")
   fi
 
   # Choose the correct Docker invocation:
-  #   --push   → docker buildx build --push  (multi-platform capable)
-  #   platform → docker buildx build --load  (single-platform, local load)
-  #   default  → docker build               (local daemon, fastest)
+  #   --push              → docker buildx build --push  (supports multi-platform)
+  #   platform (no push)  → docker buildx build --load  (single-platform, local load)
+  #   no platform, no push → docker build               (local daemon, fastest)
   build_ok=true
   if [[ "${PUSH}" == true ]]; then
     docker buildx build "${common_args[@]}" --push "${context}" || build_ok=false
-  elif [[ -n "${PLATFORM}" ]]; then
+  elif [[ -n "${effective_platform}" ]]; then
     docker buildx build "${common_args[@]}" --load "${context}" || build_ok=false
   else
     docker build "${common_args[@]}" "${context}" || build_ok=false
